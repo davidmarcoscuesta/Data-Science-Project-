@@ -9,12 +9,6 @@ output: html_document
 ```{r}
 library(tidyverse)
 library(qdapDictionaries)
-library(ggpubr)
-library(brms)
-library(lubridate)         # for working with the data 
-library(skimr)             # generate a text-based overview of the data 
-library(visdat)            # generate plots visualizing data types and missingness
-library(plotly)            # quickly create interactive plots
 library(ggplot2)
 library(readxl)            # Read .xlsx   
 
@@ -128,8 +122,8 @@ df_stem_task_data_small <- stem_task_data %>%
 
 ## ---------- Main Questions ??? ------------
 
-# Relationship between Time Response and Word Frequency *done*
-# Relationship between Time Response and Semantic Similarity *work in progress*
+# Relationship between Time Response and Word Frequency (done)
+# Relationship between Time Response and Semantic Similarity (work in progress)
 
 # Merge the datasets by the word
 ```{r}
@@ -140,9 +134,6 @@ combined_data <- merge(df_stem_task_data_small, df_word_freq_small, by.x = "resp
 ## ---------- Check Normality and Linearity ---------------
 
 # Histograms to assess the distribution visually
-```{r}
-hist(combined_data$rt, main="Response Time Distribution", xlab="Time Response")
-```
 ```{r}
 # Create a histogram using ggplot2
 ggplot(combined_data, aes(x = rt)) +
