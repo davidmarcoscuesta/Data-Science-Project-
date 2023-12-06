@@ -123,7 +123,6 @@ df_word_freq_small <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas')
 ```{r}
 df_stem_task_data_small <- stem_task_data %>% 
   select(c('subject_id', 'time_elapsed', 'rt', 'response', 'letter_set'))
-df_stem_task_data_small
 ```
 
 
