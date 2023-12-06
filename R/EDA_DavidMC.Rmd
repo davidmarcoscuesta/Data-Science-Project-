@@ -1,0 +1,200 @@
+---
+title: "Data Science Project"
+author: "David Marcos Cuesta"
+date: "2023-12-06"
+output: html_document
+---
+
+## Libraries:
+```{r}
+library(tidyverse)
+library(qdapDictionaries)
+library(ggpubr)
+library(brms)
+library(lubridate)         # for working with the data 
+library(skimr)             # generate a text-based overview of the data 
+library(visdat)            # generate plots visualizing data types and missingness
+library(plotly)            # quickly create interactive plots
+library(ggplot2)
+library(readxl)            # Read .xlsx   
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Functions:
+```{r}
+# Function to read and preprocess master file
+read_and_preprocess <- function(filepath) {
+  if (!file.exists(filepath)) {
+    stop("File does not exist: ", filepath)
+  }
+  read.csv(filepath) %>% 
+    select(subject_id, stimulus, trial_index, time_elapsed, rt, response)
+}
+
+# Function to clean response text
+clean_response <- function(data, pattern, cols_to_remove) {
+  data %>% 
+    select(-all_of(cols_to_remove)) %>% 
+    filter(str_detect(response, pattern)) %>%
+    mutate(response = str_replace_all(response, '[\"{}]', '')) %>%
+    mutate(response = str_remove_all(response, "let_| ")) %>%
+    separate(response, c("condition", "response"), sep = ":")
+}
+```
+
+## Read the data: 
+```{r}
+# Use the function to read the data
+master_file <- read_and_preprocess('data/master_file_01.csv') 
+
+```
+
+## Define the dictionary of possible English words:
+```{r}
+# Function to check if it's a word in the dictionary
+
+words_not_in_dic = c("zoopathology", "zolt", "zoolagist", "zot", "zock", "zook", "zon",
+                     "zosh", "zoze", "zoam", "zommer", "zozo", "zoomies", "zoop", "zope",
+                     "zoetrope", "zoocology", "zote", "zoge", "zoed", "zomed", "zork",
+                     "zomboni", "zotie", "zolac", "zoz", "zoadic", "zooplankton", "zoro",
+                     "zong", "zop", "zoan", "zofia", "zoodle", "zoinks", "zowwys",
+                     "zootropic",
+                     "stoll", "steele","steamstream", "stuper","stong", "stupify", "steale", "stickly",
+                     "stats", "stat", "steeler",
+                     "protype", "pringle", "preporation", "preech", "pradae", "proactive", "practicum",
+                     "priranha", "primede", "prine", "priviledge", "privelege", "priere", "pratt",
+                     "predjudice", "pread", "procer", "prad", "probbe", "protone", "pronation", "prada",
+                     "proffesional", "promo",
+                     "mifted", "milf", "misadministration", "microplane", "milkshake", "minnce", 
+                     "millineter", "mit", "milor", "mitochondria", "minging", "millisecond", "millow",
+                     "mittle", "mior","mich", "misunderstood", "miniatrure",
+                     "leep", "lemer", "leem", "leen", "leahc", "leavor", "lepper", "letal", "leb",
+                     "leir", "lerch", "lego",
+                     "gray", "grinch", "greive", "grampa", "grungy", "grunge", "grandeous", "grap",
+                     "grilla", "gret", "groot", "groope", "grimm", "growed",
+                     "gluck", "glaven", "glute", "glag", "glicemic", "gle", "glam", "gleen", "glamping",
+                     "glimp", "glack", "gloitter", "glintstone", "glep", "gleem", "glock", "glot",
+                     "glay", "glup", "glantern", "glurp",
+                     "eannagram", "eaw", "eaze", "eatily", "eal", "east", "eavesrop", "eads", "eab",
+                     "eap", "eather", "easports", 
+                     "dagwood", "dat", "dans", "dawg", "dain", "datamine", "daquirri", "dask", "dallup",
+                     "daith", "dack", "dax", "dall", "daly",
+                     "abcess", "abs", "abba", "abscent", "abhorent", "abalon", "abott", "abcs", "abraid",
+                     "abling", "abt", "abrash", "abdomnial", "abled", "abdjure", "abdominals", "aboot",
+                     "abbhor", "abondant", "abicuss", "abrail", "ablebody", "abscomb", "abid", "abduction",
+                     "abor", "abeed", "abacist" 
+                     )
+
+#adding words that considered non-word by dictionary's default:
+dict <- c(qdapDictionaries::GradyAugmented, words_not_in_dic)
+
+#removing non-words that considered words by dictionary's default:
+dict = dict[!dict %in% c("st", "mi", "da")]
+
+is.word <- function(word, dictionary) {
+  tolower(word) %in% dictionary
+}
+```
+
+
+## Data processing:
+```{r}
+# Data processing pipeline
+stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimulus")) %>%
+  mutate(letter_set = tolower(substr(response, start = 1, stop = 2))) %>%
+  filter(grepl('ab|da|ea|gl|gr|le|mi|pr|st|zo', letter_set, ignore.case = TRUE)) %>%
+  filter(is.word(response, dict)) # Filter based on the dictionary
+```
+
+## Word Fz Dataset (COCA) 60k FreeDataSet from: https://www.wordfrequency.info/samples.asp 
+```{r}
+df_word_freq <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas') #RAW
+```
+
+## Word Fz Dataset Small
+```{r}
+df_word_freq_small <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas') %>% 
+  select(c('rank','lemma','freq'))
+```
+
+## Steam task Data Frame Small
+```{r}
+df_stem_task_data_small <- stem_task_data %>% 
+  select(c('subject_id', 'time_elapsed', 'rt', 'response', 'letter_set'))
+df_stem_task_data_small
+```
+
+
+## ---------- Main Questions ??? ------------
+
+# Relationship between Time Response and Word Frequency *done*
+# Relationship between Time Response and Semantic Similarity *work in progress*
+
+# Merge the datasets by the word
+```{r}
+combined_data <- merge(df_stem_task_data_small, df_word_freq_small, by.x = "response", by.y = "lemma")
+```
+
+
+## ---------- Check Normality and Linearity ---------------
+
+# Histograms to assess the distribution visually
+```{r}
+hist(combined_data$rt, main="Response Time Distribution", xlab="Time Response")
+```
+```{r}
+# Create a histogram using ggplot2
+ggplot(combined_data, aes(x = rt)) +
+  geom_histogram(binwidth = 1, fill = "#69b3a2", color = "black") +
+  theme_minimal() +
+  labs(
+    title = "Response Time Distribution",
+    x = "Response Time",
+    y = "Frequency"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5), # Center the title
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold")
+  )
+
+```
+
+# Q-Q Plots to check for deviations from normality
+```{r}
+qqnorm(combined_data$rt, main = "Q-Q Plot for Response Time")
+qqline(combined_data$rt, col = "red") # Color for visibility
+
+```
+
+```{r}
+qqnorm(combined_data$freq, main = "Q-Q Plot for Word Fz")
+qqline(combined_data$freq, col = "red") # Color for visibility
+```
+
+# Shapiro-Wilk test for normality, we are going to use p.value > 0.05 
+```{r}
+shapiro.test(combined_data$rt) # Response Time -> W = 0.80598, p-value < 2.2e-16 ----- NO NORMALITY ----
+shapiro.test(combined_data$freq) # Frequency -> W = 0.46676, p-value < 2.2e-16 ------- NO NORMALITY ----
+```
+
+## ---------------- Word Frequency --------------------
+# Scatterplot to visualize the relationship between Response Time and Word Frequency. We don't see any correlation. 
+```{r}
+plot(combined_data$freq, combined_data$rt, main="Scatterplot of Frequency vs. Time Response",
+     xlab="Word Frequency", ylab="Time Response")
+```
+
+## ---------- Correlation Test ---------------
+
+# Both without normality, then we are going to use Spearman. No correlation. 
+```{r}
+cor_test_result <- cor.test(combined_data$rt, combined_data$freq, method="spearman")
+print(cor_test_result)
+```
+# Kendall's tau (just in case), but no correlation neither
+```{r}
+cor.test(combined_data$rt, combined_data$freq, method="kendall")
+```
