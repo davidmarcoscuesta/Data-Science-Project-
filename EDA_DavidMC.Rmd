@@ -18,15 +18,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Functions:
 ```{r}
-# Function to read and preprocess master file
-read_and_preprocess <- function(filepath) {
-  if (!file.exists(filepath)) {
-    stop("File does not exist: ", filepath)
-  }
-  read.csv(filepath) %>% 
-    select(subject_id, stimulus, trial_index, time_elapsed, rt, response)
-}
-
 # Function to clean response text
 clean_response <- function(data, pattern, cols_to_remove) {
   data %>% 
@@ -38,10 +29,11 @@ clean_response <- function(data, pattern, cols_to_remove) {
 }
 ```
 
-## Read the data: 
+## Read the data from the raw dataset: 
 ```{r}
 # Use the function to read the data
-master_file <- read_and_preprocess('data/master_file_01.csv') 
+master_file <- read.csv('data/master_file_01.csv') %>% 
+  select(subject_id, stimulus, trial_index, time_elapsed, rt, response)
 
 ```
 
@@ -81,12 +73,13 @@ words_not_in_dic = c("zoopathology", "zolt", "zoolagist", "zot", "zock", "zook",
                      "abor", "abeed", "abacist" 
                      )
 
-#adding words that considered non-word by dictionary's default:
+# Adding words that considered non-word by dictionary's default:
 dict <- c(qdapDictionaries::GradyAugmented, words_not_in_dic)
 
-#removing non-words that considered words by dictionary's default:
+# Removing non-words that considered words by dictionary's default:
 dict = dict[!dict %in% c("st", "mi", "da")]
 
+# Function used to check whether a given word exists in our dictionary:
 is.word <- function(word, dictionary) {
   tolower(word) %in% dictionary
 }
@@ -99,41 +92,31 @@ is.word <- function(word, dictionary) {
 stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimulus")) %>%
   mutate(letter_set = tolower(substr(response, start = 1, stop = 2))) %>%
   filter(grepl('ab|da|ea|gl|gr|le|mi|pr|st|zo', letter_set, ignore.case = TRUE)) %>%
-  filter(is.word(response, dict)) # Filter based on the dictionary
+  filter(is.word(response, dict)) %>%  # Filter based on the dictionary
+  select(c('subject_id', 'time_elapsed', 'rt', 'response', 'letter_set'))
+
 ```
 
 ## Word Fz Dataset (COCA) 60k FreeDataSet from: https://www.wordfrequency.info/samples.asp 
 ```{r}
-df_word_freq <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas') #RAW
-```
-
-## Word Fz Dataset Small
-```{r}
-df_word_freq_small <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas') %>% 
+df_word_freq <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas')  %>% 
   select(c('rank','lemma','freq'))
 ```
 
-## Steam task Data Frame Small
-```{r}
-df_stem_task_data_small <- stem_task_data %>% 
-  select(c('subject_id', 'time_elapsed', 'rt', 'response', 'letter_set'))
-```
-
-
-## ---------- Main Questions ??? ------------
+## ---------- Main Research Questions ---------------
 
 # Relationship between Time Response and Word Frequency (done)
 # Relationship between Time Response and Semantic Similarity (work in progress)
 
 # Merge the datasets by the word
 ```{r}
-combined_data <- merge(df_stem_task_data_small, df_word_freq_small, by.x = "response", by.y = "lemma")
+combined_data <- merge(stem_task_data, df_word_freq, by.x = "response", by.y = "lemma")
 ```
 
 
 ## ---------- Check Normality and Linearity ---------------
 
-# Histograms to assess the distribution visually
+# Histogram to assess the distribution visually
 ```{r}
 # Create a histogram using ggplot2
 ggplot(combined_data, aes(x = rt)) +
