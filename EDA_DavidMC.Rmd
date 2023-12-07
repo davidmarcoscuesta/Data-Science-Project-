@@ -5,7 +5,7 @@ date: "2023-12-06"
 output: html_document
 ---
 
-## Libraries:
+## Libraries
 ```{r}
 library(tidyverse)
 library(qdapDictionaries)
@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-## Functions:
+## Function to clean data
 ```{r}
 # Function to clean response text
 clean_response <- function(data, pattern, cols_to_remove) {
@@ -29,7 +29,7 @@ clean_response <- function(data, pattern, cols_to_remove) {
 }
 ```
 
-## Read the data from the raw dataset: 
+## Read the data from the raw dataset
 ```{r}
 # Use the function to read the data
 master_file <- read.csv('data/master_file_01.csv') %>% 
@@ -37,7 +37,7 @@ master_file <- read.csv('data/master_file_01.csv') %>%
 
 ```
 
-## Define the dictionary of possible English words:
+## Define the dictionary of possible English words
 ```{r}
 # Function to check if it's a word in the dictionary
 
@@ -86,7 +86,7 @@ is.word <- function(word, dictionary) {
 ```
 
 
-## Data processing:
+## Data processing
 ```{r}
 # Data processing pipeline
 stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimulus")) %>%
@@ -105,10 +105,13 @@ df_word_freq <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas')  %>%
 
 ## ---------- Main Research Questions ---------------
 
-# Relationship between Time Response and Word Frequency (done)
-# Relationship between Time Response and Semantic Similarity (work in progress)
+Relationship between Time Response and Word Frequency (done) 
 
-# Merge the datasets by the word
+Relationship between Time Response and Semantic Similarity (work in progress)
+
+
+## Merge the datasets by the word
+This is the dataset that we are going to use for the analysis
 ```{r}
 combined_data <- merge(stem_task_data, df_word_freq, by.x = "response", by.y = "lemma")
 ```
@@ -135,7 +138,7 @@ ggplot(combined_data, aes(x = rt)) +
 
 ```
 
-# Q-Q Plots to check for deviations from normality
+## Q-Q Plots to check for deviations from normality
 ```{r}
 qqnorm(combined_data$rt, main = "Q-Q Plot for Response Time")
 qqline(combined_data$rt, col = "red") # Color for visibility
@@ -147,14 +150,16 @@ qqnorm(combined_data$freq, main = "Q-Q Plot for Word Fz")
 qqline(combined_data$freq, col = "red") # Color for visibility
 ```
 
-# Shapiro-Wilk test for normality, we are going to use p.value > 0.05 
+## Shapiro-Wilk test for normality, we are going to use p.value > 0.05 
 ```{r}
 shapiro.test(combined_data$rt) # Response Time -> W = 0.80598, p-value < 2.2e-16 ----- NO NORMALITY ----
 shapiro.test(combined_data$freq) # Frequency -> W = 0.46676, p-value < 2.2e-16 ------- NO NORMALITY ----
 ```
 
 ## ---------------- Word Frequency --------------------
-# Scatterplot to visualize the relationship between Response Time and Word Frequency. We don't see any correlation. 
+
+# Scatterplot to visualize the relationship between Response Time and Word Frequency. 
+We don't see any correlation. 
 ```{r}
 plot(combined_data$freq, combined_data$rt, main="Scatterplot of Frequency vs. Time Response",
      xlab="Word Frequency", ylab="Time Response")
@@ -162,12 +167,14 @@ plot(combined_data$freq, combined_data$rt, main="Scatterplot of Frequency vs. Ti
 
 ## ---------- Correlation Test ---------------
 
-# Both without normality, then we are going to use Spearman. No correlation. 
+Both without normality, then we are going to use Spearman. 
+No correlation. 
 ```{r}
 cor_test_result <- cor.test(combined_data$rt, combined_data$freq, method="spearman")
 print(cor_test_result)
 ```
-# Kendall's tau (just in case), but no correlation neither
+# Kendall's tau 
+(just in case) but no correlation neither
 ```{r}
 cor.test(combined_data$rt, combined_data$freq, method="kendall")
 ```
