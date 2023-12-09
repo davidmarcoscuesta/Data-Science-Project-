@@ -9,8 +9,9 @@ output: html_document
 ```{r}
 library(tidyverse)
 library(qdapDictionaries)
-library(ggplot2)
+library(ggplot2) 
 library(readxl)            # Read .xlsx   
+library(hexbin) 
 
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -28,21 +29,14 @@ clean_response <- function(data, pattern, cols_to_remove) {
     mutate(response = str_remove_all(response, "let_| ")) %>%
     separate(response, c("condition", "response"), sep = ":")
 }
-
-#SM# nice work in defining a separate function to clean the data
-
 ```
 
 
 
 ## Read the data from the raw dataset
 ```{r}
-# Use the function to read the data  
-#SM# this comment is a little confusing! using what "function"? I think you could simply say "reading data".
-
-master_file <- read.csv('C:/My stuff/Data Science 1/David_DataSci_Project_CodeReview/data/master_file_01.csv') %>% 
+master_file <- read.csv('data/master_file_01.csv') %>% 
   select(subject_id, stimulus, trial_index, time_elapsed, rt, response)
-
 ```
 
 
@@ -92,29 +86,24 @@ dict = dict[!dict %in% c("st", "mi", "da")]
 is.word <- function(word, dictionary) {
   tolower(word) %in% dictionary
 }
-
-#SM# the rest of this chunk looks great!
-
 ```
 
 
 ## Data processing
 ```{r}
-# Data processing pipeline 
-#SM# I think more clarification here is needed!
-
-stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimulus")) %>%
-  mutate(letter_set = tolower(substr(response, start = 1, stop = 2))) %>%
-  filter(grepl('ab|da|ea|gl|gr|le|mi|pr|st|zo', letter_set, ignore.case = TRUE)) %>%
-  filter(is.word(response, dict)) %>%  # Filter based on the dictionary
-  select(c('subject_id', 'time_elapsed', 'rt', 'response', 'letter_set'))
+# Data processing pipeline
+stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimulus")) %>% 
+  mutate(letter_set = tolower(substr(response, start = 1, stop = 2))) %>% # Creates a new column 'letter_set' by converting the first two letters of 'response' to lowercase.
+  filter(grepl('ab|da|ea|gl|gr|le|mi|pr|st|zo', letter_set, ignore.case = TRUE)) %>% # Filters rows where 'letter_set' matches any of the specified two-letter combinations, case-insensitive.
+  filter(is.word(response, dict)) %>%  # Further filters responses based on whether they are valid words according to a specified dictionary ('dict').
+  select(c('subject_id', 'time_elapsed', 'rt', 'response', 'letter_set')) # Selects only the specified columns to keep in the final dataset.
 
 ```
 
 ## Word Fz Dataset (COCA) 60k FreeDataSet from: https://www.wordfrequency.info/samples.asp 
 #SM# Good job in making the source available here
 ```{r}
-df_word_freq <- read_excel('C:/My stuff/Data Science 1/David_DataSci_Project_CodeReview/data/wordFrequency60k.xlsx', sheet = 'lemmas')  %>% 
+df_word_freq <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas')  %>% 
   select(c('rank','lemma','freq'))
 ```
 
@@ -129,32 +118,52 @@ Relationship between Time Response and Semantic Similarity (work in progress)
 This is the dataset that we are going to use for the analysis
 ```{r}
 combined_data <- merge(stem_task_data, df_word_freq, by.x = "response", by.y = "lemma")
-
-#SM# good job in giving proper names to datasets
 ```
 
+## Basic Stats
+```{r}
+# Number of Unique Subjects
+num_subjects <- length(unique(master_file$subject_id))
+cat("Number of Subjects:", num_subjects, "\n")
+
+# Range of Response Times
+min_rt <- min(master_file$rt, na.rm = TRUE)
+max_rt <- max(master_file$rt, na.rm = TRUE)
+cat("Range of Response Times: Min =", min_rt, ", Max =", max_rt, "\n")
+
+# Mean and Median of Response Time
+mean_rt <- mean(master_file$rt, na.rm = TRUE)
+median_rt <- median(master_file$rt, na.rm = TRUE)
+cat("Mean Response Time:", mean_rt, "\n")
+cat("Median Response Time:", median_rt, "\n")
+
+# Standard Deviation of Response Time
+sd_rt <- sd(master_file$rt, na.rm = TRUE)
+cat("Standard Deviation of Response Time:", sd_rt, "\n")
+```
 
 ## ---------- Check Normality and Linearity ---------------
 
-# Histogram to assess the distribution visually
+Histogram to assess the distribution visually. The red line represents a kernel density estimate of your data. The dotted blue line is a normal distribution curve superimposed on the histogram, and is a visual representation of what your data distribution would look like if it followed a perfect normal distribution.
+
 ```{r}
-# Create a histogram using ggplot2
-ggplot(combined_data, aes(x = rt)) +
-  geom_histogram(binwidth = 1, fill = "#69b3a2", color = "black") +
+# Histogram with mean and median lines, and x-axis limited to 10000
+ggplot(master_file, aes(x = rt)) +
+  geom_histogram(aes(y = ..density..), binwidth = 100, fill = "#69b3a2", color = "black") +
+  geom_vline(aes(xintercept = mean_rt), color = "blue", linetype = "dashed", size = 1, alpha = 0.7) +
+  geom_vline(aes(xintercept = median_rt), color = "green", linetype = "dashed", size = 1, alpha = 0.7) +
+  xlim(c(0, 20000)) +
   theme_minimal() +
+  geom_density(color = "red", size = 1) +
+  stat_function(fun = dnorm, args = list(mean = mean(combined_data$rt, na.rm = TRUE), 
+                                         sd = sd(combined_data$rt, na.rm = TRUE)), color = "blue", linetype = "dashed") +
   labs(
-    title = "Response Time Distribution",
+    title = "Histogram of Response Time with Mean and Median (Up to 10,000)",
     x = "Response Time",
-    y = "Frequency"
+    y = "Density"
   ) +
-  theme(
-    plot.title = element_text(hjust = 0.5), # Center the title
-    axis.title.x = element_text(size = 12, face = "bold"),
-    axis.title.y = element_text(size = 12, face = "bold")
-  )
-
-#SM# I personally didn't find the following plot super-informative!
-
+  geom_text(aes(x = mean_rt, y = 0, label = paste("Mean =", round(mean_rt, 2))), vjust = 2, color = "blue", hjust = 0, size = 4, alpha = 0.7) +
+  geom_text(aes(x = median_rt, y = 0, label = paste("Median =", round(median_rt, 2))), vjust = -20, color = "green", hjust = 0, size = 4, alpha = 0.7)
 ```
 
 ## Q-Q Plots to check for deviations from normality
@@ -173,18 +182,18 @@ qqline(combined_data$freq, col = "red") # Color for visibility
 ```{r}
 shapiro.test(combined_data$rt) # Response Time -> W = 0.80598, p-value < 2.2e-16 ----- NO NORMALITY ----
 shapiro.test(combined_data$freq) # Frequency -> W = 0.46676, p-value < 2.2e-16 ------- NO NORMALITY ----
-
 ```
 
 ## ---------------- Word Frequency --------------------
 
-# Scatterplot to visualize the relationship between Response Time and Word Frequency. 
+# Hexbin plot to visualize the relationship between Response Time and Word Frequency. 
 We don't see any correlation. 
-```{r}
-plot(combined_data$freq, combined_data$rt, main="Scatterplot of Frequency vs. Time Response",
-     xlab="Word Frequency", ylab="Time Response")
 
-#SM# are there other ways to visualize this? It's difficult to follow for me!
+```{r}
+ggplot(combined_data, aes(x = freq, y = rt)) +
+  geom_hex() +
+  labs(title = "Hexbin Plot of Frequency vs. Time Response", x = "Word Frequency", y = "Time Response") +
+  theme_minimal()
 ```
 
 ## ---------- Correlation Test ---------------
