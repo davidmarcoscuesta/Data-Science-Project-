@@ -112,6 +112,7 @@ stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimu
 ```
 
 ## Word Fz Dataset (COCA) 60k FreeDataSet from: https://www.wordfrequency.info/samples.asp 
+#SM# Good job in making the source available here
 ```{r}
 df_word_freq <- read_excel('C:/My stuff/Data Science 1/David_DataSci_Project_CodeReview/data/wordFrequency60k.xlsx', sheet = 'lemmas')  %>% 
   select(c('rank','lemma','freq'))
@@ -128,6 +129,8 @@ Relationship between Time Response and Semantic Similarity (work in progress)
 This is the dataset that we are going to use for the analysis
 ```{r}
 combined_data <- merge(stem_task_data, df_word_freq, by.x = "response", by.y = "lemma")
+
+#SM# good job in giving proper names to datasets
 ```
 
 
@@ -150,6 +153,8 @@ ggplot(combined_data, aes(x = rt)) +
     axis.title.y = element_text(size = 12, face = "bold")
   )
 
+#SM# I personally didn't find the following plot super-informative!
+
 ```
 
 ## Q-Q Plots to check for deviations from normality
@@ -168,6 +173,7 @@ qqline(combined_data$freq, col = "red") # Color for visibility
 ```{r}
 shapiro.test(combined_data$rt) # Response Time -> W = 0.80598, p-value < 2.2e-16 ----- NO NORMALITY ----
 shapiro.test(combined_data$freq) # Frequency -> W = 0.46676, p-value < 2.2e-16 ------- NO NORMALITY ----
+
 ```
 
 ## ---------------- Word Frequency --------------------
@@ -177,6 +183,8 @@ We don't see any correlation.
 ```{r}
 plot(combined_data$freq, combined_data$rt, main="Scatterplot of Frequency vs. Time Response",
      xlab="Word Frequency", ylab="Time Response")
+
+#SM# are there other ways to visualize this? It's difficult to follow for me!
 ```
 
 ## ---------- Correlation Test ---------------
