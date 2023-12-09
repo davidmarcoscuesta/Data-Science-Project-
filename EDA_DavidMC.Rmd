@@ -13,6 +13,7 @@ library(ggplot2)
 library(readxl)            # Read .xlsx   
 
 knitr::opts_chunk$set(echo = TRUE)
+
 ```
 
 
@@ -27,15 +28,23 @@ clean_response <- function(data, pattern, cols_to_remove) {
     mutate(response = str_remove_all(response, "let_| ")) %>%
     separate(response, c("condition", "response"), sep = ":")
 }
+
+#SM# nice work in defining a separate function to clean the data
+
 ```
+
+
 
 ## Read the data from the raw dataset
 ```{r}
-# Use the function to read the data
-master_file <- read.csv('data/master_file_01.csv') %>% 
+# Use the function to read the data  
+#SM# this comment is a little confusing! using what "function"? I think you could simply say "reading data".
+
+master_file <- read.csv('C:/My stuff/Data Science 1/David_DataSci_Project_CodeReview/data/master_file_01.csv') %>% 
   select(subject_id, stimulus, trial_index, time_elapsed, rt, response)
 
 ```
+
 
 ## Define the dictionary of possible English words
 ```{r}
@@ -73,22 +82,27 @@ words_not_in_dic = c("zoopathology", "zolt", "zoolagist", "zot", "zock", "zook",
                      "abor", "abeed", "abacist" 
                      )
 
-# Adding words that considered non-word by dictionary's default:
+# Adding words that considered non-word by dictionary's default: #SM# it seems you are adding TRUE words that were not included in the dictionary's default database! This comment could be improved.
 dict <- c(qdapDictionaries::GradyAugmented, words_not_in_dic)
 
-# Removing non-words that considered words by dictionary's default:
+# Removing non-words that considered words by dictionary's default: 
 dict = dict[!dict %in% c("st", "mi", "da")]
 
 # Function used to check whether a given word exists in our dictionary:
 is.word <- function(word, dictionary) {
   tolower(word) %in% dictionary
 }
+
+#SM# the rest of this chunk looks great!
+
 ```
 
 
 ## Data processing
 ```{r}
-# Data processing pipeline
+# Data processing pipeline 
+#SM# I think more clarification here is needed!
+
 stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimulus")) %>%
   mutate(letter_set = tolower(substr(response, start = 1, stop = 2))) %>%
   filter(grepl('ab|da|ea|gl|gr|le|mi|pr|st|zo', letter_set, ignore.case = TRUE)) %>%
@@ -98,8 +112,9 @@ stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimu
 ```
 
 ## Word Fz Dataset (COCA) 60k FreeDataSet from: https://www.wordfrequency.info/samples.asp 
+#SM# Good job in making the source available here
 ```{r}
-df_word_freq <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas')  %>% 
+df_word_freq <- read_excel('C:/My stuff/Data Science 1/David_DataSci_Project_CodeReview/data/wordFrequency60k.xlsx', sheet = 'lemmas')  %>% 
   select(c('rank','lemma','freq'))
 ```
 
@@ -114,6 +129,8 @@ Relationship between Time Response and Semantic Similarity (work in progress)
 This is the dataset that we are going to use for the analysis
 ```{r}
 combined_data <- merge(stem_task_data, df_word_freq, by.x = "response", by.y = "lemma")
+
+#SM# good job in giving proper names to datasets
 ```
 
 
@@ -136,6 +153,8 @@ ggplot(combined_data, aes(x = rt)) +
     axis.title.y = element_text(size = 12, face = "bold")
   )
 
+#SM# I personally didn't find the following plot super-informative!
+
 ```
 
 ## Q-Q Plots to check for deviations from normality
@@ -154,6 +173,7 @@ qqline(combined_data$freq, col = "red") # Color for visibility
 ```{r}
 shapiro.test(combined_data$rt) # Response Time -> W = 0.80598, p-value < 2.2e-16 ----- NO NORMALITY ----
 shapiro.test(combined_data$freq) # Frequency -> W = 0.46676, p-value < 2.2e-16 ------- NO NORMALITY ----
+
 ```
 
 ## ---------------- Word Frequency --------------------
@@ -163,6 +183,8 @@ We don't see any correlation.
 ```{r}
 plot(combined_data$freq, combined_data$rt, main="Scatterplot of Frequency vs. Time Response",
      xlab="Word Frequency", ylab="Time Response")
+
+#SM# are there other ways to visualize this? It's difficult to follow for me!
 ```
 
 ## ---------- Correlation Test ---------------
