@@ -9,10 +9,12 @@ output: html_document
 ```{r}
 library(tidyverse)
 library(qdapDictionaries)
+## DH: Already loaded with `tidyverse`
 library(ggplot2) 
 library(readxl)            # Read .xlsx   
 library(hexbin) 
 
+## DH: I think this is only necessary if you're knitting to slides
 knitr::opts_chunk$set(echo = TRUE)
 
 ```
@@ -34,13 +36,18 @@ clean_response <- function(data, pattern, cols_to_remove) {
 
 
 ## Read the data from the raw dataset
+<!-- DH: What is this data?  Where did it come from?  -->
 ```{r}
+## DH: Recommend using `file.path()` or `here()` to construct paths
 master_file <- read.csv('data/master_file_01.csv') %>% 
   select(subject_id, stimulus, trial_index, time_elapsed, rt, response)
 ```
 
 
 ## Define the dictionary of possible English words
+
+<!-- DH: What is this, why do we need it, why these particular words? -->
+
 ```{r}
 # Function to check if it's a word in the dictionary
 
@@ -80,6 +87,7 @@ words_not_in_dic = c("zoopathology", "zolt", "zoolagist", "zot", "zock", "zook",
 dict <- c(qdapDictionaries::GradyAugmented, words_not_in_dic)
 
 # Removing non-words that considered words by dictionary's default: 
+## DH: violates immutability
 dict = dict[!dict %in% c("st", "mi", "da")]
 
 # Function used to check whether a given word exists in our dictionary:
@@ -91,6 +99,7 @@ is.word <- function(word, dictionary) {
 
 ## Data processing
 ```{r}
+## DH: Super long lines. To make this more readable, put the comment above the line rather than at the end, try shorter comments explaining "why" rather than "what," and add line breaks + deeper indenting 
 # Data processing pipeline
 stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimulus")) %>% 
   mutate(letter_set = tolower(substr(response, start = 1, stop = 2))) %>% # Creates a new column 'letter_set' by converting the first two letters of 'response' to lowercase.
@@ -102,21 +111,30 @@ stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimu
 
 ## Word Fz Dataset (COCA) 60k FreeDataSet from: https://www.wordfrequency.info/samples.asp 
 #SM# Good job in making the source available here
+
+<!-- DH: Did you mean to include a URL in a section header? -->
+
 ```{r}
-df_word_freq <- read_excel('data/wordFrequency60k.xlsx', sheet = 'lemmas')  %>% 
+df_word_freq <- read_excel('data/wordFrequency60k.xlsx', 
+                           sheet = 'lemmas')  %>% 
   select(c('rank','lemma','freq'))
 ```
 
 ## ---------- Main Research Questions ---------------
 
+<!-- DH: Did you mean to include these lines in a section header? -->
+
 Relationship between Time Response and Word Frequency (done) 
 
 Relationship between Time Response and Semantic Similarity (work in progress)
+
+<!-- DH: This is cryptic -->
 
 
 ## Merge the datasets by the word
 This is the dataset that we are going to use for the analysis
 ```{r}
+## DH: Long line
 combined_data <- merge(stem_task_data, df_word_freq, by.x = "response", by.y = "lemma")
 ```
 
@@ -142,11 +160,14 @@ sd_rt <- sd(master_file$rt, na.rm = TRUE)
 cat("Standard Deviation of Response Time:", sd_rt, "\n")
 ```
 
+<!-- DH: At this point, it seems like you skip most of Peng and Matsui's checklist, and move directly to drawing a plot to address your research question. -->
+
 ## ---------- Check Normality and Linearity ---------------
 
 Histogram to assess the distribution visually. The red line represents a kernel density estimate of your data. The dotted blue line is a normal distribution curve superimposed on the histogram, and is a visual representation of what your data distribution would look like if it followed a perfect normal distribution.
 
 ```{r}
+## DH: Long lines, and a little hard to parse with minimal indentation
 # Histogram with mean and median lines, and x-axis limited to 10000
 ggplot(master_file, aes(x = rt)) +
   geom_histogram(aes(y = ..density..), binwidth = 100, fill = "#69b3a2", color = "black") +
@@ -166,6 +187,9 @@ ggplot(master_file, aes(x = rt)) +
   geom_text(aes(x = median_rt, y = 0, label = paste("Median =", round(median_rt, 2))), vjust = -20, color = "green", hjust = 0, size = 4, alpha = 0.7)
 ```
 
+<!-- DH: Anything of note here?  Is it concerning that 5.6k rows were dropped? --> 
+
+
 ## Q-Q Plots to check for deviations from normality
 ```{r}
 qqnorm(combined_data$rt, main = "Q-Q Plot for Response Time")
@@ -178,11 +202,15 @@ qqnorm(combined_data$freq, main = "Q-Q Plot for Word Fz")
 qqline(combined_data$freq, col = "red") # Color for visibility
 ```
 
+<!-- DH: Anything notable here? -->
+
 ## Shapiro-Wilk test for normality, we are going to use p.value > 0.05 
 ```{r}
 shapiro.test(combined_data$rt) # Response Time -> W = 0.80598, p-value < 2.2e-16 ----- NO NORMALITY ----
 shapiro.test(combined_data$freq) # Frequency -> W = 0.46676, p-value < 2.2e-16 ------- NO NORMALITY ----
 ```
+
+<!-- DH: Did we really need the hypothesis test?  Just visually, they have long right tails.  If we really need normality, maybe look at the logged variables instead?  Or, if we don't need normality, why check for it? -->
 
 ## ---------------- Word Frequency --------------------
 
@@ -201,6 +229,7 @@ ggplot(combined_data, aes(x = freq, y = rt)) +
 Both without normality, then we are going to use Spearman. 
 No correlation. 
 ```{r}
+## DH: Lone line
 cor_test_result <- cor.test(combined_data$rt, combined_data$freq, method="spearman")
 print(cor_test_result)
 ```
@@ -209,3 +238,5 @@ print(cor_test_result)
 ```{r}
 cor.test(combined_data$rt, combined_data$freq, method="kendall")
 ```
+
+<!-- DH: And the upshot is ... ? -->
