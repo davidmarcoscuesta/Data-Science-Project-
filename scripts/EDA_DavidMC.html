@@ -1032,7 +1032,7 @@ word and rank 60,000 being the least frequent. Shows the frequency (raw
 frequency and frequency per million words) in each of the eight main
 genres: blogs, other web, TV/Movies, (more formal) spoken, fiction,
 magazine, newspaper, and academic.</p>
-<pre class="r"><code>df_word_freq &lt;- read_excel(&#39;data/wordFrequency60k.xlsx&#39;, 
+<pre class="r"><code>df_word_freq &lt;- read_excel(here(&quot;data&quot;, &quot;wordFrequency60k.xlsx&quot;), 
                            sheet = &#39;lemmas&#39;) </code></pre>
 </div>
 <div id="lets-understand-what-is-inside-the-coca-60k-version-data-set" class="section level3">
@@ -1506,7 +1506,7 @@ general frequency (‘freq’).</p>
 <h3>Deciding the columns we are goint to use</h3>
 <p>We decided that to answer our research question, the columns we are
 going to select for our analysis are: ‘rank’, ‘lemma’, and ’freq.</p>
-<pre class="r"><code>df_word_freq_filtered &lt;- read_excel(&#39;data/wordFrequency60k.xlsx&#39;, 
+<pre class="r"><code>df_word_freq_filtered &lt;- read_excel(here(&quot;data&quot;,&quot;wordFrequency60k.xlsx&quot;), 
                            sheet = &#39;lemmas&#39;)  %&gt;% 
   select(c(&#39;rank&#39;,&#39;lemma&#39;,&#39;freq&#39;))</code></pre>
 <p>Before cleaning our data set, we have to select an English language

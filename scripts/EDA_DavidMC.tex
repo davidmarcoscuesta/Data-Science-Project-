@@ -616,7 +616,7 @@ newspaper, and academic.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{df\_word\_freq }\OtherTok{\textless{}{-}} \FunctionTok{read\_excel}\NormalTok{(}\StringTok{\textquotesingle{}data/wordFrequency60k.xlsx\textquotesingle{}}\NormalTok{, }
+\NormalTok{df\_word\_freq }\OtherTok{\textless{}{-}} \FunctionTok{read\_excel}\NormalTok{(}\FunctionTok{here}\NormalTok{(}\StringTok{"data"}\NormalTok{, }\StringTok{"wordFrequency60k.xlsx"}\NormalTok{), }
                            \AttributeTok{sheet =} \StringTok{\textquotesingle{}lemmas\textquotesingle{}}\NormalTok{) }
 \end{Highlighting}
 \end{Shaded}
@@ -855,7 +855,7 @@ going to select for our analysis are: `rank', `lemma', and 'freq.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{df\_word\_freq\_filtered }\OtherTok{\textless{}{-}} \FunctionTok{read\_excel}\NormalTok{(}\StringTok{\textquotesingle{}data/wordFrequency60k.xlsx\textquotesingle{}}\NormalTok{, }
+\NormalTok{df\_word\_freq\_filtered }\OtherTok{\textless{}{-}} \FunctionTok{read\_excel}\NormalTok{(}\FunctionTok{here}\NormalTok{(}\StringTok{"data"}\NormalTok{,}\StringTok{"wordFrequency60k.xlsx"}\NormalTok{), }
                            \AttributeTok{sheet =} \StringTok{\textquotesingle{}lemmas\textquotesingle{}}\NormalTok{)  }\SpecialCharTok{\%\textgreater{}\%} 
   \FunctionTok{select}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{\textquotesingle{}rank\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}lemma\textquotesingle{}}\NormalTok{,}\StringTok{\textquotesingle{}freq\textquotesingle{}}\NormalTok{))}
 \end{Highlighting}

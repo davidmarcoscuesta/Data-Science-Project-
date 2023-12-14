@@ -98,7 +98,7 @@ clean_response <- function(data, pattern, cols_to_remove) {
 To do this, we are going to select the Corpus of Contemporary American English (COCA), the 60k version, retrieved from: https://www.wordfrequency.info/samples.asp, to classify the words by word frequency ranks, with rank 1 being the most frequent word and rank 60,000 being the least frequent. Shows the frequency (raw frequency and frequency per million words) in each of the eight main genres: blogs, other web, TV/Movies, (more formal) spoken, fiction, magazine, newspaper, and academic.
 
 ```{r}
-df_word_freq <- read_excel('data/wordFrequency60k.xlsx', 
+df_word_freq <- read_excel(here("data", "wordFrequency60k.xlsx"), 
                            sheet = 'lemmas') 
 ```
 
@@ -122,7 +122,7 @@ colnames(df_word_freq)
 ### Deciding the columns we are goint to use
 We decided that to answer our research question, the columns we are going to select for our analysis are: 'rank', 'lemma', and 'freq. 
 ```{r}
-df_word_freq_filtered <- read_excel('data/wordFrequency60k.xlsx', 
+df_word_freq_filtered <- read_excel(here("data","wordFrequency60k.xlsx"), 
                            sheet = 'lemmas')  %>% 
   select(c('rank','lemma','freq'))
 ```
