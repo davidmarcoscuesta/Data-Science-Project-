@@ -1,5 +1,5 @@
 # Response Time in Semantic Memory in a Divergent Thinking Task
-Colab with Soran Malaie, Dr. Michael Spivey and Dr. Tyler Marghetis. 
+Collaboration for my Data Science project with Soran Malaie, Dr. Michael Spivey and Dr. Tyler Marghetis. 
 
 ## Project Overview
 This project, led by David Marcos Cuesta, investigates the relationship between word frequency and response time in a divergent thinking task. It contributes to ongoing research from Dr. Tyler Marghetis's lab and Dr. Michael Spivey's lab.
