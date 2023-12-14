@@ -1,55 +1,140 @@
 ---
-title: "Data Science Project"
+title: "Response Time in Semantic Memory in a Divergent Thinking Task"
 author: "David Marcos Cuesta"
 date: "2023-12-06"
-output: html_document
+output: 
+  
+  pdf_document: default
+  html_document: default
+editor_options:
+  markdown:
+    wrap: 72
 ---
 
-## Libraries
-```{r}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+```{r results='hide'}
 library(tidyverse)
 library(qdapDictionaries)
-## DH: Already loaded with `tidyverse`
-library(ggplot2) 
-library(readxl)            # Read .xlsx   
-library(hexbin) 
-
-## DH: I think this is only necessary if you're knitting to slides
-knitr::opts_chunk$set(echo = TRUE)
-
+library(here)
+library(readxl)
+library(skimr)
 ```
 
 
-## Function to clean data
+# INTRODUCTION
+
+This analysis is motivated by a collaboration offered to me from the laboratory of Dr. Tyler Marghetis, in collaboration with my colleague Soran Malaie. Within this experiment there are many analyzes to be done and the possibility of working together arose since we have similar interests. The database is the result of two experiments that were carried out last year and with which a scientific article called: "Divergent and Convergent Creativity Are Different Kinds of Foraging" has just been published. 
+
+The paper investigates the evolutionary basis of human creativity, proposing that our creative capacities may have evolved from spatial foraging abilities. Through an experimental approach, the study demonstrates that tasks involving spatial searches can systematically influence subsequent creative thinking—divergent thinking is enhanced by spatially dispersed search, while convergent thinking benefits from a focused search pattern. These findings suggest a shared cognitive mechanism between spatial navigation and creative processes, supporting the idea that high-level cognitive functions may be grounded in more primitive, embodied experiences.
+
+The task where we are going to perform the analyzes is called stem task, outlined by Malaie et al. (2023), participants are challenged with a word stem completion exercise, a method probing the expansiveness of semantic memory and divergent thinking capabilities. This task necessitates the rapid generation of words from provided two-letter prompts, reflecting the participant's ability to creatively navigate their mental lexicon (Warrington & Weiskrantz, 1970; 1974). It's a critical component in evaluating the cognitive processes related to creativity and semantic foraging, emphasizing the link between language and thought (Graf & Mandler, 1984).
+
+This database offers an opportunity to better understand our semantic memory and our process of retrieving words from memory. Due to the nature of the data, causalities cannot be found, but it can serve as preliminary work for future lines of work. The main hypothesis is that we were going to find a relationship between the frequency with which those words are used in the English language and response time, as a measure of how quickly you retrieve that word from memory. This hypothesis aligns with existing research indicating that word frequency can modulate brain activation in language-related tasks (Sanchez, A., & Paz-Alonso, P. M., 2023).
+
+## METHODS 
+
+The methods that I used for this exploratory data analysis (EDAD) is based on Peng and Matsui's book "The Art of Data Science", retrieved from: https://bookdown.org/rdpeng/artofdatascience/. 
+
+They approach involves an "epicycle" of analysis, which includes setting expectations, collecting information, and comparing expectations to data. This cycle is applied throughout the data analysis process to refine questions and hypotheses, ensuring a thorough exploration and understanding of the data.
+
+We have begun by doing an exploratory analysis of the original research dataset to understand how the variables have been recorded, the analysis possibilities it offers us and its limitations. Subsequently, the original database was cleaned, reducing the number of valid entries for our analysis from 15,830 to 4,635 (the experiments were done online, so many entries are wrong and are not useful to us. Based on the possibilities that the database offered, a hypothesis has been generated. After carrying out the relevant analyses, our initial hypothesis has been compared with the results of the analysis.
+
+### Raw Dataset
+From the experiments for the paper: "Divergent and Convergent Creativity Are Different Kinds of Foraging" by Soran Malaie.
 ```{r}
-# Function to clean response text
+master_file <- read.csv(here("data", "master_file_01.csv"))
+```
+
+### Basic EDA for the RAW Data Set "master_file_filtered"
+
+We observe that the database has a number of columns 30 and a total number of responses of 15830. 
+We find a number of missing entries of 15687 in total.
+```{r}
+# First exploratory analyses, checking NA's and packaging 
+skim(master_file)
+```
+
+### Quick check of the first and last rows of the data set. 
+```{r}
+head(master_file)
+tail(master_file)
+```
+
+### Checking the variables that we have registered in the data set
+```{r}
+colnames(master_file)
+```
+### Interesting variables for our research
+We are especially interested in analyzing the response time to understand if the frequency with which that word is used is interfering in the recovery process and thus be able to contribute new knowledge to how our semantic memory works.
+
+To answer our research question, we are only interested in working with the columns: subject_id, stimulus, trial_index, time_elapsed, rt, and response.
+```{r}
+# Filtering the variables of interest to work with
+master_file_filtered <- read.csv(here("data", "master_file_01.csv")) %>% 
+  select(subject_id, stimulus, trial_index, time_elapsed, rt, response)
+```
+
+### Here we created a function to clean the response text
+```{r}
 clean_response <- function(data, pattern, cols_to_remove) {
   data %>% 
-    select(-all_of(cols_to_remove)) %>% 
+    # Filter rows where the 'response' column contains the specified regex pattern.
     filter(str_detect(response, pattern)) %>%
+    # Remove quotes, curly braces, and other characters from the 'response' column.
     mutate(response = str_replace_all(response, '[\"{}]', '')) %>%
+    # Remove the substring 'let_' and any spaces from the 'response' column.
     mutate(response = str_remove_all(response, "let_| ")) %>%
+    # Split the 'response' column into two separate columns: 'condition' and 'response' using ':' as the separator.
     separate(response, c("condition", "response"), sep = ":")
 }
 ```
 
+### Our hypothesis is that the greater the frequency of the word, the less time it will take to retrieve that word from memory. 
 
+To do this, we are going to select the Corpus of Contemporary American English (COCA), the 60k version, retrieved from: https://www.wordfrequency.info/samples.asp, to classify the words by word frequency ranks, with rank 1 being the most frequent word and rank 60,000 being the least frequent. Shows the frequency (raw frequency and frequency per million words) in each of the eight main genres: blogs, other web, TV/Movies, (more formal) spoken, fiction, magazine, newspaper, and academic.
 
-## Read the data from the raw dataset
-<!-- DH: What is this data?  Where did it come from?  -->
 ```{r}
-## DH: Recommend using `file.path()` or `here()` to construct paths
-master_file <- read.csv('data/master_file_01.csv') %>% 
-  select(subject_id, stimulus, trial_index, time_elapsed, rt, response)
+df_word_freq <- read_excel('data/wordFrequency60k.xlsx', 
+                           sheet = 'lemmas') 
 ```
 
-
-## Define the dictionary of possible English words
-
-<!-- DH: What is this, why do we need it, why these particular words? -->
-
+### Let's understand what is inside the COCA 60k version data set
+We observe that there are 5050 rows and 25 columns. 
 ```{r}
-# Function to check if it's a word in the dictionary
+skim(df_word_freq)
+```
+
+### Everything is as expected. The first ranks are the ones with the most frequency and the last words in the ranking are the ones with the least frequency.
+```{r}
+head(df_word_freq)
+tail(df_word_freq)
+```
+### Analysis possibilities
+Here we look at the possibilities we have. As we do not have data on the media most used by the subjects, we will be interested in using the general frequency ('freq').
+```{r}
+colnames(df_word_freq)
+```
+
+### Deciding the columns we are goint to use
+We decided that to answer our research question, the columns we are going to select for our analysis are: 'rank', 'lemma', and 'freq. 
+```{r}
+df_word_freq_filtered <- read_excel('data/wordFrequency60k.xlsx', 
+                           sheet = 'lemmas')  %>% 
+  select(c('rank','lemma','freq'))
+```
+
+Before cleaning our data set, we have to select an English language dictionary to help us discern which answers are correct and which are not. We choose the 'qdapDictionaries' package. 
+
+Along with the data set, we were notified that certain answers had been accepted as valid in the experiment without them being in the dictionary, so we were given a list of the words that had been accepted as valid in the experiment. Which we integrated into the R code with the name "words_not_in_dic". 
+
+### In the following code we define the dictionary that we will use to clean the raw database:
+```{r}
+# The purpose of this function is to collect responses from subjects that are not included in the English 
+# language dictionary that we are using (qdapDictionaries) and add it. 
 
 words_not_in_dic = c("zoopathology", "zolt", "zoolagist", "zot", "zock", "zook", "zon",
                      "zosh", "zoze", "zoam", "zommer", "zozo", "zoomies", "zoop", "zope",
@@ -83,12 +168,11 @@ words_not_in_dic = c("zoopathology", "zolt", "zoolagist", "zot", "zock", "zook",
                      "abor", "abeed", "abacist" 
                      )
 
-# Adding words that considered non-word by dictionary's default: #SM# it seems you are adding TRUE words that were not included in the dictionary's default database! This comment could be improved.
-dict <- c(qdapDictionaries::GradyAugmented, words_not_in_dic)
+# Adding words that considered non-word by dictionary's default, but are true words, and adding it to the "qdapDictionaries" that I am using.
+original_dict <- c(qdapDictionaries::GradyAugmented, words_not_in_dic)
 
 # Removing non-words that considered words by dictionary's default: 
-## DH: violates immutability
-dict = dict[!dict %in% c("st", "mi", "da")]
+filtered_dict = original_dict[!original_dict %in% c("st", "mi", "da")]
 
 # Function used to check whether a given word exists in our dictionary:
 is.word <- function(word, dictionary) {
@@ -96,101 +180,195 @@ is.word <- function(word, dictionary) {
 }
 ```
 
-
-## Data processing
+### Data processing
+We apply the 'clean_response' function, check if it is an existing word in our dictionary and select the columns that we are going to use for our analysis.
 ```{r}
-## DH: Super long lines. To make this more readable, put the comment above the line rather than at the end, try shorter comments explaining "why" rather than "what," and add line breaks + deeper indenting 
 # Data processing pipeline
-stem_task_data <- clean_response(master_file, 'let_diverse|let_linear', c("stimulus")) %>% 
-  mutate(letter_set = tolower(substr(response, start = 1, stop = 2))) %>% # Creates a new column 'letter_set' by converting the first two letters of 'response' to lowercase.
-  filter(grepl('ab|da|ea|gl|gr|le|mi|pr|st|zo', letter_set, ignore.case = TRUE)) %>% # Filters rows where 'letter_set' matches any of the specified two-letter combinations, case-insensitive.
-  filter(is.word(response, dict)) %>%  # Further filters responses based on whether they are valid words according to a specified dictionary ('dict').
-  select(c('subject_id', 'time_elapsed', 'rt', 'response', 'letter_set')) # Selects only the specified columns to keep in the final dataset.
+stem_task_data <- clean_response(master_file_filtered,
+                                 'let_diverse|let_linear',
+                                 c("stimulus")) %>% 
+  # Convert 'response' first two letters to lowercase for consistency
+  mutate(letter_set = tolower(substr(response,
+                                     start = 1,
+                                     stop = 2))) %>% 
+  # Keep rows with specific two-letter sets for focused analysis
+  filter(grepl('ab|da|ea|gl|gr|le|mi|pr|st|zo',
+               letter_set, ignore.case = TRUE)) %>% 
+  # Ensure responses are valid words 
+  filter(is.word(response, filtered_dict)) %>%  
+  # Narrow down dataset to essential columns for analysis
+  select(c('subject_id', 'time_elapsed',
+           'rt', 'response', 'letter_set')) 
 
 ```
 
-## Word Fz Dataset (COCA) 60k FreeDataSet from: https://www.wordfrequency.info/samples.asp 
-#SM# Good job in making the source available here
-
-<!-- DH: Did you mean to include a URL in a section header? -->
-
+### Merge the datasets, adding the word frequency
+With this line we manage to add a column with the frequency of each of the responses in our data set. 
+Is going to be the final data set that we are going to use for the analysis.
 ```{r}
-df_word_freq <- read_excel('data/wordFrequency60k.xlsx', 
-                           sheet = 'lemmas')  %>% 
-  select(c('rank','lemma','freq'))
+combined_data <- merge(stem_task_data, df_word_freq_filtered, by.x = "response", by.y = "lemma")
 ```
 
-## ---------- Main Research Questions ---------------
-
-<!-- DH: Did you mean to include these lines in a section header? -->
-
-Relationship between Time Response and Word Frequency (done) 
-
-Relationship between Time Response and Semantic Similarity (work in progress)
-
-<!-- DH: This is cryptic -->
-
-
-## Merge the datasets by the word
-This is the dataset that we are going to use for the analysis
-```{r}
-## DH: Long line
-combined_data <- merge(stem_task_data, df_word_freq, by.x = "response", by.y = "lemma")
-```
-
-## Basic Stats
+### Basic Stats
+Our final database is composed of 143 subjects. The mean response time is: 19659.53, median: 4837 with a Standard Deviation of Response Time of: 39808.27. 
 ```{r}
 # Number of Unique Subjects
-num_subjects <- length(unique(master_file$subject_id))
+num_subjects <- length(unique(combined_data$subject_id))
 cat("Number of Subjects:", num_subjects, "\n")
 
 # Range of Response Times
-min_rt <- min(master_file$rt, na.rm = TRUE)
-max_rt <- max(master_file$rt, na.rm = TRUE)
+min_rt <- min(combined_data$rt, na.rm = TRUE)
+max_rt <- max(combined_data$rt, na.rm = TRUE)
 cat("Range of Response Times: Min =", min_rt, ", Max =", max_rt, "\n")
 
 # Mean and Median of Response Time
-mean_rt <- mean(master_file$rt, na.rm = TRUE)
-median_rt <- median(master_file$rt, na.rm = TRUE)
+mean_rt <- mean(combined_data$rt, na.rm = TRUE)
+median_rt <- median(combined_data$rt, na.rm = TRUE)
 cat("Mean Response Time:", mean_rt, "\n")
 cat("Median Response Time:", median_rt, "\n")
 
 # Standard Deviation of Response Time
-sd_rt <- sd(master_file$rt, na.rm = TRUE)
+sd_rt <- sd(combined_data$rt, na.rm = TRUE)
 cat("Standard Deviation of Response Time:", sd_rt, "\n")
+
+# Mean and Median of Word Frequency Rank
+mean_freq <- mean(combined_data$freq, na.rm = TRUE)
+median_freq <- median(combined_data$freq, na.rm = TRUE)
+cat("Mean Word Frequency Rank:", mean_freq, "\n")
+cat("Median Word Frequency Rank:", median_freq, "\n")
 ```
 
-<!-- DH: At this point, it seems like you skip most of Peng and Matsui's checklist, and move directly to drawing a plot to address your research question. -->
+### Check Normality and Linearity
 
-## ---------- Check Normality and Linearity ---------------
+To choose which statistic we are going to use to analyze if there is a correlation between response time and word frequency, we are going to observe using a histogram how our variables are distributed, to see if they comply with normality and parametric tests can be used or if Applying non-parametric statistics does not comply.
 
 Histogram to assess the distribution visually. The red line represents a kernel density estimate of your data. The dotted blue line is a normal distribution curve superimposed on the histogram, and is a visual representation of what your data distribution would look like if it followed a perfect normal distribution.
+X-axis limited to 20k for visualization purposes, the rows dropped out do not provide relevant information to analyze whether it comply with the normality curve.
 
-```{r}
-## DH: Long lines, and a little hard to parse with minimal indentation
-# Histogram with mean and median lines, and x-axis limited to 10000
-ggplot(master_file, aes(x = rt)) +
-  geom_histogram(aes(y = ..density..), binwidth = 100, fill = "#69b3a2", color = "black") +
-  geom_vline(aes(xintercept = mean_rt), color = "blue", linetype = "dashed", size = 1, alpha = 0.7) +
-  geom_vline(aes(xintercept = median_rt), color = "green", linetype = "dashed", size = 1, alpha = 0.7) +
-  xlim(c(0, 20000)) +
+Neither of the two variables follows normality, so we will have to use non-parametric statistics.
+```{r knitr::opts_chunk$set(warning = FALSE, message = FALSE)}
+# Creating a histogram with mean and median lines, along with density and normal distribution curves
+ggplot(combined_data, aes(x = rt)) +
+  geom_histogram(
+    aes(y = ..density..), 
+    binwidth = 100, 
+    fill = "#69b3a2", 
+    color = "black"
+  ) +
+  geom_vline(
+    aes(xintercept = mean_rt), 
+    color = "blue", 
+    linetype = "dashed", 
+    size = 1, 
+    alpha = 0.7
+  ) +
+  geom_vline(
+    aes(xintercept = median_rt), 
+    color = "green", 
+    linetype = "dashed", 
+    size = 1, 
+    alpha = 0.7
+  ) +
+  xlim(c(0, 15000)) +
   theme_minimal() +
-  geom_density(color = "red", size = 1) +
-  stat_function(fun = dnorm, args = list(mean = mean(combined_data$rt, na.rm = TRUE), 
-                                         sd = sd(combined_data$rt, na.rm = TRUE)), color = "blue", linetype = "dashed") +
+  geom_density(
+    color = "red", 
+    size = 1
+  ) +
+  stat_function(
+    fun = dnorm, 
+    args = list(
+      mean = mean(combined_data$rt, na.rm = TRUE), 
+      sd = sd(combined_data$rt, na.rm = TRUE)
+    ), 
+    color = "blue", 
+    linetype = "dashed"
+  ) +
   labs(
     title = "Histogram of Response Time with Mean and Median (Up to 10,000)",
     x = "Response Time",
     y = "Density"
   ) +
-  geom_text(aes(x = mean_rt, y = 0, label = paste("Mean =", round(mean_rt, 2))), vjust = 2, color = "blue", hjust = 0, size = 4, alpha = 0.7) +
-  geom_text(aes(x = median_rt, y = 0, label = paste("Median =", round(median_rt, 2))), vjust = -20, color = "green", hjust = 0, size = 4, alpha = 0.7)
+  geom_text(
+    aes(x = mean_rt, y = 0, label = paste("Mean =", round(mean_rt, 2))), 
+    vjust = -25, 
+    color = "blue", 
+    hjust = 0, 
+    size = 4, 
+    alpha = 0.7
+  ) +
+  geom_text(
+    aes(x = median_rt, y = 0, label = paste("Median =", round(median_rt, 2))), 
+    vjust = -29, 
+    color = "green", 
+    hjust = 0, 
+    size = 4, 
+    alpha = 0.7
+  )
 ```
 
-<!-- DH: Anything of note here?  Is it concerning that 5.6k rows were dropped? --> 
+```{r}
+# Creating a histogram with mean and median lines, along with density and normal distribution curves
+ggplot(combined_data, aes(x = freq)) +
+  geom_histogram(
+    aes(y = ..density..), 
+    binwidth = 100, 
+    fill = "#69b3a2", 
+    color = "black"
+  ) +
+  geom_vline(
+    aes(xintercept = mean_freq), 
+    color = "blue", 
+    linetype = "dashed", 
+    size = 1, 
+    alpha = 0.7
+  ) +
+  geom_vline(
+    aes(xintercept = median_freq), 
+    color = "green", 
+    linetype = "dashed", 
+    size = 1, 
+    alpha = 0.7
+  ) +
+  xlim(c(0, 200000)) +
+  theme_minimal() +
+  geom_density(
+    color = "red", 
+    size = 1
+  ) +
+  stat_function(
+    fun = dnorm, 
+    args = list(
+      mean = mean(combined_data$freq, na.rm = TRUE), 
+      sd = sd(combined_data$freq, na.rm = TRUE)
+    ), 
+    color = "blue", 
+    linetype = "dashed"
+  ) +
+  labs(
+    title = "Histogram of Word Frequency with Mean and Median (Up to 10,000)",
+    x = "Word Frequency Rank",
+    y = "Density"
+  ) +
+  geom_text(
+    aes(x = mean_freq, y = 0, label = paste("Mean =", round(mean_freq, 2))), 
+    vjust = -20, 
+    color = "blue", 
+    hjust = 0, 
+    size = 4, 
+    alpha = 0.7
+  ) +
+  geom_text(
+    aes(x = median_freq, y = 0, label = paste("Median =", round(median_freq, 2))), 
+    vjust = -20, 
+    color = "green", 
+    hjust = 0, 
+    size = 4, 
+    alpha = 0.7
+  )
+```
 
-
-## Q-Q Plots to check for deviations from normality
+### Q-Q Plots to check for deviations from normality
 ```{r}
 qqnorm(combined_data$rt, main = "Q-Q Plot for Response Time")
 qqline(combined_data$rt, col = "red") # Color for visibility
@@ -202,41 +380,77 @@ qqnorm(combined_data$freq, main = "Q-Q Plot for Word Fz")
 qqline(combined_data$freq, col = "red") # Color for visibility
 ```
 
-<!-- DH: Anything notable here? -->
+### Visualization if there are any correlation between Word Frequenzy and Response Time
+Before performing the Spearman correlation statistic, we want to visualize both variables to see if they show signs of correlation between them. 
 
-## Shapiro-Wilk test for normality, we are going to use p.value > 0.05 
-```{r}
-shapiro.test(combined_data$rt) # Response Time -> W = 0.80598, p-value < 2.2e-16 ----- NO NORMALITY ----
-shapiro.test(combined_data$freq) # Frequency -> W = 0.46676, p-value < 2.2e-16 ------- NO NORMALITY ----
-```
-
-<!-- DH: Did we really need the hypothesis test?  Just visually, they have long right tails.  If we really need normality, maybe look at the logged variables instead?  Or, if we don't need normality, why check for it? -->
-
-## ---------------- Word Frequency --------------------
-
-# Hexbin plot to visualize the relationship between Response Time and Word Frequency. 
-We don't see any correlation. 
+We have chosen Hexbinplot since with a scatter plot it was very difficult to visualize in which area there was more density due to the number of points in the same area.
+The Hexbin plot suggests that most responses have a high frequency but we can't observe any correlation between the frequency of a word and the time response. 
 
 ```{r}
 ggplot(combined_data, aes(x = freq, y = rt)) +
   geom_hex() +
-  labs(title = "Hexbin Plot of Frequency vs. Time Response", x = "Word Frequency", y = "Time Response") +
+  labs(title = "Hexbin Plot of Frequency vs. Response Time",
+       x = "Word Frequency Rank", y = "Response Time") +
   theme_minimal()
 ```
 
-## ---------- Correlation Test ---------------
-
-Both without normality, then we are going to use Spearman. 
-No correlation. 
+### Correlation Test 
+ 
+Although there does not seem to be a correlation in the graph, we are going to use the non-parametric statistic Spearman's rank correlation coefficient to ensure that there is no significant correlation
 ```{r}
-## DH: Lone line
 cor_test_result <- cor.test(combined_data$rt, combined_data$freq, method="spearman")
 print(cor_test_result)
 ```
-# Kendall's tau 
-(just in case) but no correlation neither
+
+# RESULTS
+
+### EDA Results
+
+We have found a database with many NAs, which reduced the sample enormously. With data collection that has required meticulous processing, which can be improved for future research, such as the way of collecting the responses, where many errors have been found and instead of classifying the two experiments in a column and in another put the answers, we have found: {"let_linear":"able"}, which had to be separated into two columns and cleaned. Worrying response times have also been found that reduce the internal and external validity of the experiment, with a Mean Response Time: 3643.337 and a Standard Deviation of Response Time: 2403.828. 
+
+The Corpus of Contemporary American English (COCA) is a very interesting data set because it not only has the frequency of words in general, but also classifies them by categories, giving rise to interesting future research.
+
+### Correlation Results
+The Spearman's rank correlation test result shows a rho value of approximately 0.0066, suggesting a very weak positive correlation between response time and word frequency. However, the p-value of 0.6553 suggests that this correlation is not statistically significant, meaning there's no strong evidence of a monotonic relationship between the two variables in the sample data.
+
+### Visualizing the Spearman's rank correlation coefficient
 ```{r}
-cor.test(combined_data$rt, combined_data$freq, method="kendall")
+# # We first need to calculate the ranks of the data
+combined_data$rank_rt <- rank(combined_data$rt, ties.method = "average")
+combined_data$rank_freq <- rank(combined_data$freq, ties.method = "average")
+
+# Now create a scatter plot of these ranks
+ggplot(combined_data, aes(x = rank_rt, y = rank_freq)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Rank of Response Time", y = "Rank of Word Frequency", 
+       title = "Scatter plot of Ranks with Spearman's Correlation") +
+  theme_minimal()
 ```
 
-<!-- DH: And the upshot is ... ? -->
+The scatter plot shows the ranks of response time on the x-axis and the ranks of word frequency on the y-axis. Each point represents a pair of ranks, and the plot is a visual representation of the Spearman's rank correlation.
+
+The blue line across the plot appears to be a best-fit line through the data points, which should be flat because the ranks of response time and word frequency are plotted against each other. The flatness of the line suggests there is very little to no monotonic relationship between the two ranks, which aligns with the previously mentioned Spearman correlation coefficient of approximately 0.0066 and the high p-value.
+
+The dense clustering of points along the entire range of ranks without a clear upward or downward trend further supports the conclusion of a very weak correlation. This means that knowing the rank of a word's frequency does not provide much information about the rank of the response time in this dataset.
+
+# DISCUSSION 
+
+We have found that there appears to be no correlation between response time and word frequency. But also exploring the database, we have seen certain limitations that may be interfering in the validity of our analyses, such as that since it is an online experiment there is no type of supervision by any researcher, response times are very high. In general, there was no time limit set, and there are many variables that can interfere with this reaction time such as internet problems, typing speed, distractors around while taking the test, and multiple variables that have not already been controlled. which was not the original goal of the experiments. Therefore, it is important to interpret the results taking these limitations into account. From here it is invited to carry out more controlled tests in future research and to carry out the analysis of the semantic distance between words, to see if relationships are found between the semantic distances and the response time, which would be more in line with the foraging effect that is studied in the original paper of this data set. 
+
+The results of this analysis are of utmost importance because they will help us design better experiments where we can control many more variables, generate better databases and study the phenomenon of semantic memory recovery with more detail and scientific rigor.
+
+# REFERENCES
+
+Graf, P., & Mandler, G. (1984). Activation makes words more accessible, but not necessarily more retrievable. Journal of Verbal Learning and Verbal Behavior, 23(5), 553–568. https://doi.org/10.1016/S0022-5371(84)90346-3
+
+Hills, T. T., Jones, M. N., & Todd, P. M. (2012). Optimal foraging in semantic memory. Psychological Review, 119(2), 431. http://dx.doi.org/10.1037/a0027373
+
+Malaie, S., Spivey, M., & Marghetis, T. (2023). Divergent and Convergent Creativity Are Different Kinds of Foraging.
+
+Peng, D., & Elizabeth, M. (2015). “The Art of Data Science.” A Guide for Anyone Who Works with Data. Skybrude Consulting, LLC. 
+
+Sánchez, A., Carreiras, M., & Paz-Alonso, P. M. (2023). Word frequency and reading demands modulate brain activation in the inferior frontal gyrus. Scientific Reports, 13(1), 17217.
+
+Warrington, E. K., & Weiskrantz, L. (1970). Amnesic syndrome: Consolidation or retrieval? Nature, 228(5272), 628–630. https://doi.org/10.1038/228628a0
+
